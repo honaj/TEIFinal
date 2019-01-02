@@ -1,4 +1,5 @@
 var socket = null;
+//So many variables, not all are needed. Needs cleanup
 let motionDebug = document.getElementById("motionDebug");
 let speedDebug = document.getElementById("speedDebug");
 let resetButton = document.getElementById("resetButton");
@@ -7,7 +8,6 @@ let beats = [
 ]
 let currentBeat = [];
 let userBeats = [];
-let pauses = [];
 let startTime = new Date();
 let endTime = new Date();
 let oldEndTime = new Date();
@@ -17,6 +17,7 @@ let onBeat = false;
 let controlValue = 0;
 let checkedSync = false;
 let timeDiffInSeconds = 0;
+let motionCheckValue = 3;
 
 if (document.readyState != 'loading') ready();
 else document.addEventListener('DOMContentLoaded', ready);
@@ -89,87 +90,63 @@ else {
 
 } 
 
-function startTimer() {
-
-}
-
-//Get time between pauses to measure rhythm
-
+//Run function when accelerometer updates
 function accelerometerUpdate(e) {
+  //Bunch of stuff to calculate motion
   let aX = event.acceleration.x*1;
   let aY = event.acceleration.y*1;
-  let aZ = event.acceleration.z*1;
-  //The following two lines are just to calculate a
-  // tilt. Not really needed. 
+  let aZ = event.acceleration.z*1; 
   let xPosition = Math.atan2(aY, aZ);
   let yPosition = Math.atan2(aX, aZ);
   let avgMotion = Math.abs((aX + aY + aZ) / 3);
- // speedDebug.innerHTML = avgMotion;
-  if(avgMotion > 3) {
+  //Set beat start time if motion is fast enough
+  if(avgMotion > motionCheckValue) {
     moving = true;
-    //motionDebug.innerHTML = "moving";
     timerStarted = false;
      if(!timerStarted) {
       startTime = new Date();
       timerStarted = true;
-      
-      //motionDebug.innerHTML = pauses[pauses.length - 1];
-      
     } 
   }
- /*  else {
-    moving = false;
-    if(!timerStarted) {
-      startTime = new Date();
-      timerStarted = true;
-    }
-  } */
-
-  
+  //Set beat end time if motion is slow enough
    else if(moving && avgMotion < 0.3) {
-    //motionDebug.innerHTML = "beat!";
     if(timerStarted) {
-      //let pauseTime = (oldEndTime.getTime() + startTime.getTime()) / 1000;
-      //pauses.push(pauseTimer)
-      //motionDebug.innerHTML = pauseTimer;
       oldEndTime = endTime;
       endTime = new Date();
       timerStarted = false;
       let timeDifference = (oldEndTime.getTime() - endTime.getTime());
       timeDiffInSeconds = Math.abs(timeDifference / 1000);
       userBeats.push(timeDiffInSeconds);
-      //motionDebug.innerHTML = timeDiffInSeconds;
-      
     } 
     moving = false;
   }
   if(!moving && userBeats.length > 2) {
+    //Set control value based on the first two beats
     controlValue = Math.abs(userBeats[0] - userBeats[1]);
+    //Loop through recorded beats and check if each is within a certain tolerance of the control value
     for(let i = 0; i < userBeats.length; i ++) {
       let difference = Math.abs(userBeats[i - 1] - userBeats[i]);
       if(Math.abs(controlValue - difference) < 800) {
         motionDebug.innerHTML = "on beat!";
-        motionDebug.style.fontSize = "40px";       
+        motionDebug.style.fontSize = "40px";      
+        onBeat = true; 
       }
       else {
         motionDebug.innerHTML = "off beat!";
-        motionDebug.style.fontSize = "3s0px";
-      }
-     //speedDebug.innerHTML = timeDiffInSeconds;
-     
+        motionDebug.style.fontSize = "30px";
+        onBeat = false;
     }
+    //Transfer user beats to new array
     if(!checkedSync) {
       for(let [index, beat] of userBeats.entries()) {
         currentBeat.push(beat - 100);
         currentBeat.push(100);
-        
       }
-      window.navigator.vibrate(200, 200, 200, 200, 200, 200);
-        speedDebug.innerHTML = "test"
+      //Vibrate beat back to user, currently not very reliable
+      window.navigator.vibrate(currentBeat);
         checkedSync = true;
     }
   }
- 
 }
 
 //check if shake is supported or not.
@@ -182,4 +159,4 @@ function send(str) {
 
 function logReceived(d) {
   document.getElementById('lastMsg').innerHTML = d + '<br />' + document.getElementById('lastMsg').innerHTML;
-}
+}}
